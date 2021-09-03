@@ -1,0 +1,12 @@
+name: "ve_msia"
+title: "Vaccine Effectiveness in Malaysia"
+description: |
+  Vaccine Effectiveness in Malaysia
+output_dir: "docs"
+navbar:
+  right:
+    - text: "ve_msia"
+      href: ve_msia_git.html
+    - text: "About"
+      href: about.html
+output: distill::distill_article
