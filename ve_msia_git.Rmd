@@ -1,5 +1,5 @@
 ---
-title: "ve_msia"
+title: "Vaccine effectiveness against COVID-19 & severe COVID-19 in Malaysia"
 description: |
   Based on MOH's open data on GitHub.
 author:
@@ -13,8 +13,8 @@ output:
     toc: yes
     toc_depth: 2
 ---
-# setup
-```{r setup, include=FALSE}
+
+```{r setup, echo=FALSE}
 library(knitr)
 library(distill)
 library(googlesheets)
@@ -27,9 +27,9 @@ library(RcppRoll) # running total
 # https://github.com/MoH-Malaysia/covid19-public?s=08 
 # https://github.com/CITF-Malaysia/citf-public 
 
-```
+
 # pop
-```{r}
+
 pop <- read.csv("https://raw.githubusercontent.com/MoH-Malaysia/covid19-public/main/static/population.csv")
 adultwp <- pop[pop$state=="W.P. Kuala Lumpur", "pop_18"] + pop[pop$state=="W.P. Kuala Lumpur", "pop_60"]
 adultsel <- pop[pop$state=="Selangor", "pop_18"] + pop[pop$state=="Selangor", "pop_60"]
@@ -38,66 +38,52 @@ popmsia <- pop[pop$state=="Malaysia","pop"]/1000000
 popwpkl <- pop[pop$state=="W.P. Kuala Lumpur","pop"]/1000000
 popsel <- pop[pop$state=="Selangor","pop"]/1000000
 popkv = popsel + popwpkl
-```
+
 # msia
-```{r, include=FALSE}
+
 msia <- read.csv("https://raw.githubusercontent.com/MoH-Malaysia/covid19-public/main/epidemic/cases_malaysia.csv")
 
 msia$date <- as.Date(msia$date)
-```
-```{r}
+
 msia <- msia %>% mutate(new_cases_relative = cases_new/popmsia)
-str(msia)
-```
+
 # msia hospitalised
-```{r, include=FALSE}
+
 msia_hosp <- read.csv("https://raw.githubusercontent.com/MoH-Malaysia/covid19-public/main/epidemic/hospital.csv")
 
 msia_hosp$date <- as.Date(msia_hosp$date)
-```
-```{r}
-#str(msia_hosp)
+
 msia_adm <- msia_hosp %>% group_by(date) %>% summarise(msia_admitted_covid = sum(admitted_covid))
 msia_adm <- msia_adm %>% mutate(msia_admitted_covid_relative = msia_admitted_covid/popmsia)
-#summary(msia_adm$date)
-```
+
 # msia case hosp rate
-```{r}
+
 msia_cases <- msia %>% filter(date>as.Date("2020-03-23")) %>% select(date, new_cases_relative)
 #msia_cases <- msia_cases %>% slice(-n())
 colnames(msia_cases) <- c("tarikh", "new_cases_relative")
 msia_chr <- cbind(msia_adm, msia_cases)
 msia_chr <- msia_chr %>% mutate(chr = round(msia_admitted_covid_relative/new_cases_relative*100,2))
 msia_chr_trunc <- msia_chr %>% filter(date>as.Date("2020-11-01"))
-```
+
 # msia vacc datasets
-```{r}
+
 msia_vacc <- read.csv("https://raw.githubusercontent.com/CITF-Malaysia/citf-public/main/vaccination/vax_malaysia.csv")
 msia_vacc$date <- as.Date(msia_vacc$date)
 msia_vacc <- msia_vacc %>% mutate(firstdose = round(cumul_partial/(popmsia*1000000)*100,2),
                                   fullyvacc = round(cumul_full/(popmsia*1000000)*100,2))
-#str(msia_vacc)
+
 url <- 'https://docs.google.com/spreadsheets/d/1FYYemZq2DZ2jmbw8lJMw8eDJ3Xtnpuu8LGKoTAML_tc/edit?usp=sharing'
 vacc_cases <- gsheet2tbl(url)
-#str(vacc_cases)
-```
+
 # msia vac eff datasets
-```{r}
+
 msiavacc8 <- msia_vacc %>% select(date, cumul_full) %>% filter(date>as.Date("2021-07-31"))
 msiavacc8 <- msiavacc8[1:31,]
-```
-```{r}
-vacc_cases8 <- bind_cols(msiavacc8, vacc_cases[-1])
-```
 
-```{r}
-#vacc_cases8 <- bind_cols(msiavacc8, vacc_cases[-1])
-#vacc_cases8 <- vacc_cases8 %>% select(-3)
-#names(vacc_cases8)
+vacc_cases8 <- bind_cols(msiavacc8, vacc_cases[-1])
+
 colnames(vacc_cases8)[1] <- c("date")
-#str(vacc_cases8)
-```
-```{r}
+
 # vaccine effectiveness
 ve8 <-vacc_cases8 %>% mutate(
   uicount = popmsia*1000000 - cumul_full, # c19 incident new
@@ -129,10 +115,10 @@ ve8 <-vacc_cases8 %>% mutate(
   cvacc_eff_sev = round((1-(cratesev_vacc_per100k/cratesev_ui_per100k))*100,2),
   cma7_vacc_eff_sev = rollmean(cvacc_eff_sev, k = 7, fill = NA)
   )
-str(ve8)
-```
+
+
 # msia vacc effectiveness
-```{r, fig.cap="Lines are 7-days moving averages (MA7). On August 22, 2021, 40% of the Malaysian population have been fully vaccinated.", out.extra="class=external",  fig.width=12, fig.height=6, message=FALSE, echo=FALSE, warning=FALSE}
+
 gwp1 <- subset(ve8, date == "2021-08-22") #40% fullyvacc
 
 # against COVID-19
@@ -170,123 +156,3 @@ p <- p %>%  layout(title = list(text = 'Vaccine effectiveness against COVID-19 &
                    barmode = 'group', bargap = 0.15, bargroupgap = 0.1)
 p
 ```
-
-# msia vacc effectiveness cumulative
-```{r, fig.cap="Lines are 7-days moving averages (MA7). On August 22, 2021, 40% of the Malaysian population have been fully vaccinated.", out.extra="class=external",  fig.width=12, fig.height=6, message=FALSE, echo=FALSE, warning=FALSE}
-gwp1 <- subset(ve8, date == "2021-08-22")
-
-# against COVID-19
-p <- plot_ly(ve8, x = ~date, y = ~cma7_vacc_eff_c19, type = 'scatter', 
-             name = 'MA7 vs C19',
-             mode = "lines", line = list(color = "#2F8DA3", opacity = 0.71))
-p <- p %>%  add_trace(ve8, x = ~date, y = ~cvacc_eff_c19, type = 'scatter', 
-                      name = 'vs C19',
-                      mode = "lines", line = list(color = "#2F8DA3", dash = 'dot'), opacity = 0.71)
-#p <- p %>%  add_trace(data = gwp1, y = ~vacc_eff_c19, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-#p <- p %>%  add_trace(data = gwp1, y = ~ma7_vacc_eff_c19, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-p <- p %>%  add_trace(ve8, x = ~date, y = ~cma7_vacc_eff_sev, type = 'scatter', 
-                      name = 'MA7 vs severe C19',
-                      mode = "lines", line = list(color = "crimson"), opacity = 0.71)
-p <- p %>%  add_trace(ve8, x = ~date, y = ~cvacc_eff_sev, type = 'scatter', 
-                      name = 'vs severe C19',
-                      mode = "lines", line = list(color = "crimson", dash = 'dot'), opacity = 0.71)
-#p <- p %>%  add_trace(data = gwp1, y = ~vacc_eff_sev, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-#p <- p %>%  add_trace(data = gwp1, y = ~cma7_vacc_eff_sev, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-#p <- p %>%  add_trace(data = gwp1, y = ~cma7_vacc_eff_c19, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-
-p <- p %>%  layout(
-  title = list(text = 'Vaccine cumulative effectiveness <br> against COVID-19 & severe COVID-19 in Malaysia', font = list(size = 14)), 
-  xaxis = list(
-    title = "",
-    tickfont = list(
-      size = 11)),
-  yaxis = list(
-    title = 'Vaccine cumulative effectiveness (%)',
-    titlefont = list(
-      size = 13),
-    tickfont = list(
-      size = 14),
-    range = c(-20,80)),
-  legend = list(x = 0, y = 1, bgcolor = 'rgba(255, 255, 255, 0)', bordercolor = 'rgba(255, 255, 255, 0)'),
-  barmode = 'group', bargap = 0.15, bargroupgap = 0.1)
-p
-```
-
-# msia rate ratio
-```{r, fig.cap="On August 22, 2021, 40% of the Malaysian population have been fully vaccinated.", out.extra="class=external",  fig.width=12, fig.height=6, message=FALSE, echo=FALSE, warning=FALSE}
-gwp1 <- subset(ve8, date == "2021-08-22") #40% fullyvacc
-
-# against COVID-19
-p <- plot_ly(ve8, x = ~date, y = ~ratio_c19_ui, type = 'scatter', 
-             name = 'Rate ratio vs COVID-19',
-             mode = "lines", line = list(color = "#2F8DA3", opacity = 0.71))
-#p <- p %>%  add_trace(ve8, x = ~date, y = ~vacc_eff_c19, type = 'scatter', 
- #                     name = 'vs COVID-19',
-  #                    mode = "lines", line = list(color = "#2F8DA3", dash = 'dot'), opacity = 0.71)
-#p <- p %>%  add_trace(data = gwp1, y = ~vacc_eff_c19, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-#p <- p %>%  add_trace(data = gwp1, y = ~ma7_vacc_eff_c19, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-p <- p %>%  add_trace(ve8, x = ~date, y = ~ratio_sev_ui, type = 'scatter', 
-                      name = 'Rate ratio vs severe COVID-19',
-                      mode = "lines", line = list(color = "crimson"), opacity = 0.71)
-#p <- p %>%  add_trace(ve8, x = ~date, y = ~vacc_eff_sev, type = 'scatter', 
-   #                   name = 'vs severe COVID-19',
-    #                  mode = "lines", line = list(color = "crimson", dash = 'dot'), opacity = 0.71)
-#p <- p %>%  add_trace(data = gwp1, y = ~vacc_eff_sev, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-#p <- p %>%  add_trace(data = gwp1, y = ~ma7_vacc_eff_sev, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-#p <- p %>%  add_trace(data = gwp1, y = ~ma7_vacc_eff_c19, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-
-p <- p %>%  layout(title = list(text = 'Rate ratio for COVID-19 & severe COVID-19 in Malaysia', font = list(size = 14)),
-                   xaxis = list(
-                     title = "",
-                     tickfont = list(
-                       size = 11)),
-                   yaxis = list(
-                     title = 'Rate ratio',
-                     titlefont = list(
-                       size = 13),
-                     tickfont = list(
-                       size = 14)),
-                   legend = list(x = 0, y = 1, bgcolor = 'rgba(255, 255, 255, 0)', bordercolor = 'rgba(255, 255, 255, 0)'),
-                   barmode = 'group', bargap = 0.15, bargroupgap = 0.1)
-p
-```
-
-# msia cumulative rate ratio
-```{r, fig.cap="On August 22, 2021, 40% of the Malaysian population have been fully vaccinated.", out.extra="class=external",  fig.width=12, fig.height=6, message=FALSE, echo=FALSE, warning=FALSE}
-gwp1 <- subset(ve8, date == "2021-08-22") #40% fullyvacc
-
-# against COVID-19
-p <- plot_ly(ve8, x = ~date, y = ~cratio_c19_ui, type = 'scatter', 
-             name = 'Cumulative rate ratio vs COVID-19',
-             mode = "lines", line = list(color = "#2F8DA3", opacity = 0.71))
-#p <- p %>%  add_trace(ve8, x = ~date, y = ~vacc_eff_c19, type = 'scatter', 
- #                     name = 'vs COVID-19',
-  #                    mode = "lines", line = list(color = "#2F8DA3", dash = 'dot'), opacity = 0.71)
-#p <- p %>%  add_trace(data = gwp1, y = ~vacc_eff_c19, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-#p <- p %>%  add_trace(data = gwp1, y = ~ma7_vacc_eff_c19, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-p <- p %>%  add_trace(ve8, x = ~date, y = ~cratio_sev_ui, type = 'scatter', 
-                      name = 'Cumulative rate ratio vs severe COVID-19',
-                      mode = "lines", line = list(color = "crimson"), opacity = 0.71)
-#p <- p %>%  add_trace(ve8, x = ~date, y = ~vacc_eff_sev, type = 'scatter', 
-   #                   name = 'vs severe COVID-19',
-    #                  mode = "lines", line = list(color = "crimson", dash = 'dot'), opacity = 0.71)
-#p <- p %>%  add_trace(data = gwp1, y = ~vacc_eff_sev, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-#p <- p %>%  add_trace(data = gwp1, y = ~ma7_vacc_eff_sev, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-#p <- p %>%  add_trace(data = gwp1, y = ~ma7_vacc_eff_c19, name = '40% fully vacc', type = "scatter", mode = "markers", marker = list(color = "salmon", size = 20), opacity = 0.51)
-
-p <- p %>%  layout(title = list(text = 'Cumulative rate ratio for COVID-19 & severe COVID-19 in Malaysia', font = list(size = 14)),
-                   xaxis = list(
-                     title = "",
-                     tickfont = list(
-                       size = 11)),
-                   yaxis = list(
-                     title = 'Rate ratio',
-                     titlefont = list(
-                       size = 13),
-                     tickfont = list(
-                       size = 14)),
-                   legend = list(x = 0, y = 1, bgcolor = 'rgba(255, 255, 255, 0)', bordercolor = 'rgba(255, 255, 255, 0)'),
-                   barmode = 'group', bargap = 0.15, bargroupgap = 0.1)
-p
-```
-
