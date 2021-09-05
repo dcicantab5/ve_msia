@@ -1,17 +1,6 @@
 ---
 title: "Vaccine effectiveness against COVID-19 & severe COVID-19 in Malaysia"
-description: |
-  Based on MOH's open data on GitHub.
-author:
-  - name: Dr Saiful Safuan Md Sani 
-    url: https://saifulsafuan.com
-    affiliation: Clinical Research Centre & Department of Medicine Hospital Kuala Lumpur
-date: "`2021-09-01`"
-output: 
-  distill::distill_article:
-    self_contained: yes
-    toc: yes
-    toc_depth: 2
+
 ---
 
 ```{r setup, echo=FALSE}
